@@ -1,0 +1,9 @@
+{
+  "name": "video-tools-server",
+  "version": "1.0.0",
+  "description": "Servidor local do Video Tools: faz a ponte entre o site e o yt-dlp",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "scripts": { "start": "node server.mjs" }
+}

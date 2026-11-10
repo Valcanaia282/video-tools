@@ -1,0 +1,21 @@
+VIDEO TOOLS - SERVIDOR LOCAL
+============================
+
+Este programinha deixa o site https://valcanaia282.github.io/video-tools/
+usar o yt-dlp do seu computador para baixar vídeos por link.
+
+1) Instale (uma vez só), no Terminal/PowerShell:
+     winget install OpenJS.NodeJS.LTS
+     winget install yt-dlp.yt-dlp
+     winget install Gyan.FFmpeg
+   Depois feche e abra o terminal de novo.
+
+2) Dê dois cliques em "iniciar-servidor.bat"
+   (ou rode:  node server.mjs)
+
+3) Abra o site e use a aba "Baixar vídeo".
+   Deixe a janela do servidor aberta enquanto estiver usando.
+   Se o Chrome perguntar se o site pode acessar a rede local, clique em Permitir.
+
+Se algum site parar de funcionar, atualize o yt-dlp:
+     winget upgrade yt-dlp.yt-dlp

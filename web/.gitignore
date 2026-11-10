@@ -1,0 +1,6 @@
+node_modules
+dist
+public/ffmpeg
+*.local
+.DS_Store
+public/video-tools-servidor.zip
