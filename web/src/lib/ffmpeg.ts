@@ -11,17 +11,40 @@ export function ffmpegLoaded() {
   return instance !== null
 }
 
+/**
+ * Baixa um arquivo como blob: URL informando o progresso.
+ * (O toBlobURL do @ffmpeg/util quebra quando o servidor comprime a resposta, como o GitHub Pages
+ * faz com o .wasm: o Content-Length é do arquivo comprimido e nunca bate com os bytes recebidos.)
+ */
+async function blobUrlWithProgress(url: string, type: string, onProgress: (pct: number | null, bytes: number) => void) {
+  const res = await fetch(url)
+  if (!res.ok || !res.body) throw new Error(`Falha ao baixar ${url} (${res.status})`)
+  const encoded = !!res.headers.get('Content-Encoding')
+  const total = encoded ? 0 : Number(res.headers.get('Content-Length')) || 0
+  const reader = res.body.getReader()
+  const chunks: Uint8Array[] = []
+  let received = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+    received += value.byteLength
+    onProgress(total ? Math.min(100, (received / total) * 100) : null, received)
+  }
+  return URL.createObjectURL(new Blob(chunks as BlobPart[], { type }))
+}
+
 /** Carrega o FFmpeg uma única vez (~31 MB; o navegador guarda em cache depois). */
-export function getFFmpeg(onDownload?: (pct: number) => void): Promise<FFmpeg> {
+export function getFFmpeg(onDownload?: (pct: number | null, bytes: number) => void): Promise<FFmpeg> {
   if (instance) return Promise.resolve(instance)
   if (!loading) {
     loading = (async () => {
       const ff = new FFmpeg()
       const base = new URL(import.meta.env.BASE_URL + 'ffmpeg/', location.href).href
       const coreURL = await toBlobURL(base + 'ffmpeg-core.js', 'text/javascript')
-      const wasmURL = await toBlobURL(base + 'ffmpeg-core.wasm', 'application/wasm', true, (e) => {
-        if (e.total > 0) onDownload?.(Math.min(100, (e.received / e.total) * 100))
-      })
+      const wasmURL = await blobUrlWithProgress(base + 'ffmpeg-core.wasm', 'application/wasm', (pct, bytes) =>
+        onDownload?.(pct, bytes),
+      )
       await ff.load({ coreURL, wasmURL })
       instance = ff
       return ff

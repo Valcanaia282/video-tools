@@ -28,9 +28,10 @@ function saved<T extends string>(key: string, def: T): T {
 }
 
 export function GifTab({ active, incoming }: Props) {
-  const [ff, setFf] = useState<{ state: 'idle' | 'loading' | 'ready' | 'error'; pct: number }>({
+  const [ff, setFf] = useState<{ state: 'idle' | 'loading' | 'ready' | 'error'; pct: number | null; bytes: number; error?: string }>({
     state: ffmpegLoaded() ? 'ready' : 'idle',
     pct: 0,
+    bytes: 0,
   })
   const [file, setFile] = useState<File | null>(null)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
@@ -56,10 +57,13 @@ export function GifTab({ active, incoming }: Props) {
   // Carrega o FFmpeg na primeira vez que a aba é aberta.
   useEffect(() => {
     if (!active || ff.state !== 'idle') return
-    setFf({ state: 'loading', pct: 0 })
-    getFFmpeg((pct) => setFf({ state: 'loading', pct }))
-      .then(() => setFf({ state: 'ready', pct: 100 }))
-      .catch(() => setFf({ state: 'error', pct: 0 }))
+    setFf({ state: 'loading', pct: null, bytes: 0 })
+    getFFmpeg((pct, bytes) => setFf({ state: 'loading', pct, bytes }))
+      .then(() => setFf({ state: 'ready', pct: 100, bytes: 0 }))
+      .catch((err) => {
+        console.error('[video-tools] falha ao carregar o FFmpeg', err)
+        setFf({ state: 'error', pct: 0, bytes: 0, error: err instanceof Error ? err.message : String(err) })
+      })
   }, [active, ff.state])
 
   useEffect(() => {
@@ -189,7 +193,7 @@ export function GifTab({ active, incoming }: Props) {
   function cancel() {
     cancelled.current = true
     killFFmpeg()
-    setFf({ state: 'idle', pct: 0 }) // recarrega na próxima vez
+    setFf({ state: 'idle', pct: 0, bytes: 0 }) // recarrega na próxima vez
   }
 
   const segN = Number(seg.replace(',', '.'))
@@ -199,10 +203,17 @@ export function GifTab({ active, incoming }: Props) {
 
   return (
     <section className="panel">
-      {ff.state === 'loading' && <Progress value={ff.pct || null} label="Carregando o FFmpeg (só na primeira vez, ~31 MB)…" />}
+      {ff.state === 'loading' && (
+        <Progress
+          value={ff.pct}
+          label="Carregando o FFmpeg (só na primeira vez, ~31 MB)…"
+          detail={ff.pct === null && ff.bytes ? formatBytes(ff.bytes) : undefined}
+        />
+      )}
       {ff.state === 'error' && (
         <div className="notice err">
           Não consegui carregar o FFmpeg. Verifique a conexão e recarregue a página.
+          {ff.error && <div className="muted">{ff.error}</div>}
         </div>
       )}
 
